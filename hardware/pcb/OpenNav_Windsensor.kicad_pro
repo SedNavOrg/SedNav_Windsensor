@@ -512,7 +512,7 @@
       "plot": "",
       "pos_files": "",
       "specctra_dsn": "",
-      "step": "OpenNav_Windsensor.step",
+      "step": "../../../../Downloads/OpenNav_Windsensor_smd_v1.step",
       "svg": "",
       "vrml": ""
     },
