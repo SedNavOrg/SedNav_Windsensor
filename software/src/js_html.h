@@ -15,12 +15,12 @@ String JS()
  content +=F( "document.getElementById('firmware').innerHTML = myObj.Device.FirmwareVersion;");
  content +=F( "document.getElementById('license').innerHTML = myObj.Device.License;");
 
- content +=F( "document.getElementById('sdkversion').innerHTML = myObj.Device.ESP8266.SDKVersion;");
- content +=F( "document.getElementById('chipid').innerHTML = myObj.Device.ESP8266.ChipID;");
- content +=F( "document.getElementById('cpuspeed').innerHTML = myObj.Device.ESP8266.CPUSpeed.Value;");
- content +=F( "document.getElementById('csunit').innerHTML = myObj.Device.ESP8266.CPUSpeed.Unit;");
- content +=F( "document.getElementById('freeheapsize').innerHTML = myObj.ESP8266.FreeHeapSize.Value;");
- content +=F( "document.getElementById('fhsunit').innerHTML = myObj.Device.ESP8266.FreeHeapSize.Unit;");
+ content +=F( "document.getElementById('sdkversion').innerHTML = myObj.Device.Chip.SDKVersion;");
+ content +=F( "document.getElementById('chipid').innerHTML = myObj.Device.Chip.ChipID;");
+ content +=F( "document.getElementById('cpuspeed').innerHTML = myObj.Device.Chip.CPUSpeed.Value;");
+ content +=F( "document.getElementById('csunit').innerHTML = myObj.Device.Chip.CPUSpeed.Unit;");
+ content +=F( "document.getElementById('freeheapsize').innerHTML = myObj.Chip.FreeHeapSize.Value;");
+ content +=F( "document.getElementById('fhsunit').innerHTML = myObj.Device.Chip.FreeHeapSize.Unit;");
 
  content +=F( "document.getElementById('cssid').innerHTML = myObj.Device.NetworkParameter.WLANClientSSID;");
  content +=F( "document.getElementById('sssid').innerHTML = myObj.Device.NetworkParameter.WLANServerSSID;");
@@ -49,8 +49,8 @@ String JS()
  content +=F( "sssid.value = myObj.Device.NetworkParameter.WLANServerSSID;");
  
  content +=F( "heapsize = document.getElementById('heapsize');");
- content +=F( "heapsize.value = myObj.Device.ESP8266.FreeHeapSize.Value;");
- content +=F( "document.getElementById('hunit').innerHTML = myObj.Device.ESP8266.FreeHeapSize.Unit;");
+ content +=F( "heapsize.value = myObj.Device.Chip.FreeHeapSize.Value;");
+ content +=F( "document.getElementById('hunit').innerHTML = myObj.Device.Chip.FreeHeapSize.Unit;");
 
  content +=F( "strength = document.getElementById('strength');");
  content +=F( "strength.value = myObj.Device.NetworkParameter.FieldStrength.Value;");
@@ -81,7 +81,11 @@ String JS()
  content +=F( "sensor1 = document.getElementById('sensor1');");
  content +=F( "sensor1.value = myObj.Device.MeasuringValues.Sensor1.Value;");
  content +=F( "document.getElementById('s1unit').innerHTML = myObj.Device.MeasuringValues.Sensor1.Unit;");
- if(String(actconf.windSensorType) == "WiFi 1000"){
+ 
+ // Display sensor-specific measurements
+ switch (actconf.windSensorType)
+ {
+ case WIND_SENSOR_WIFI_1000:
    content +=F( "sensor2 = document.getElementById('sensor2');");
    content +=F( "sensor2.value = myObj.Device.MeasuringValues.Sensor2.Value;");
    content +=F( "document.getElementById('s2unit').innerHTML = myObj.Device.MeasuringValues.Sensor2.Unit;");
@@ -94,8 +98,12 @@ String JS()
    content +=F( "time2 = document.getElementById('time2');");
    content +=F( "time2.value = myObj.Device.MeasuringValues.Time2.Value;");
    content +=F( "document.getElementById('t2unit').innerHTML = myObj.Device.MeasuringValues.Time2.Unit;");
- }
- if(String(actconf.windSensorType) == "Yachta" || String(actconf.windSensorType) == "Jukolein" || String(actconf.windSensorType) == "Ventus"){
+   break;
+
+ case WIND_SENSOR_YACHTA:
+ case WIND_SENSOR_JUKOLEIN:
+ case WIND_SENSOR_VENTUS:
+ case WIND_SENSOR_SEDNAV_C6:
    content +=F( "magnitude = document.getElementById('magnitude');");
    content +=F( "magnitude.value = myObj.Device.MeasuringValues.MagFluxDensity.Value;");
    content +=F( "document.getElementById('magnitudeunit').innerHTML = myObj.Device.MeasuringValues.MagFluxDensity.Unit;");
@@ -103,8 +111,11 @@ String JS()
    content +=F( "magsensor = document.getElementById('magsensor');");
    content +=F( "magsensor.value = myObj.Device.MeasuringValues.MagnetSensor.Value;");
    content +=F( "document.getElementById('magunit').innerHTML = myObj.Device.MeasuringValues.MagnetSensor.Unit;");
+   break;
  }
- if(String(actconf.windSensorType) == "Ventus" && String(actconf.tempSensorType) == "BME280"){
+ 
+ // Display Ventus-specific environmental measurements if BME280 present
+ if(actconf.windSensorType == WIND_SENSOR_VENTUS && String(actconf.tempSensorType) == "BME280"){
    content +=F( "atemp = document.getElementById('atemp');");
    content +=F( "atemp.value = myObj.Device.MeasuringValues.AirTemperature.Value;");
    content +=F( "document.getElementById('aunit').innerHTML = myObj.Device.MeasuringValues.AirTemperature.Unit;");
@@ -117,6 +128,7 @@ String JS()
    content +=F( "hum.value = myObj.Device.MeasuringValues.AirHumidity.Value;");
    content +=F( "document.getElementById('humunit').innerHTML = myObj.Device.MeasuringValues.AirHumidity.Unit;");
  }
+ 
  content +=F( "rotspeed = document.getElementById('rotspeed');");
  content +=F( "rotspeed.value = myObj.Device.MeasuringValues.RotationSpeed.Value;");
  content +=F( "document.getElementById('rotunit').innerHTML = myObj.Device.MeasuringValues.RotationSpeed.Unit;");

@@ -10,6 +10,7 @@ String Settings(int num, String vname[30], String value[30])
      DebugPrintln(3, out);
   }
 
+  NO_INTERRUPTS;
   // Check new settings and save it in configuration
   for (int i = 0; i < num; i++)
   {
@@ -62,7 +63,7 @@ String Settings(int num, String vname[30], String value[30])
       actconf.sensorID = toInteger(value[i]);
     }
     if (vname[i] == "wstype") {
-      value[i].toCharArray(actconf.windSensorType, 15);
+      actconf.windSensorType = stringToWindSensorType(value[i]);
     }
     if (vname[i] == "sendwsdata") {
       actconf.windSensor = toInteger(value[i]);
@@ -109,6 +110,7 @@ String Settings(int num, String vname[30], String value[30])
       actconf.caloffset = toFloat(value[i]);
     }
   }
+  INTERRUPTS;
 
   // Save the settings if the number of return values is greater 0
   if(num > 0) {
@@ -142,7 +144,7 @@ String Settings(int num, String vname[30], String value[30])
    
    // Web page title
    content +=F( "<h2>");
-   content += String(actconf.devname) + " " + String(actconf.windSensorType);
+   content += String(actconf.devname) + " " + windSensorTypeToString(actconf.windSensorType);
    content +=F( "</h2>");
    content += String(actconf.crights);
    content +=F( ", "); 
@@ -218,7 +220,7 @@ String Settings(int num, String vname[30], String value[30])
     content += getindex(sensorid, String(actconf.sensorID));
     content += F(";");
     content += F("document.SetForm.wstype.selectedIndex = ");
-    content += getindex(wstype, String(actconf.windSensorType));
+    content += getindex(wstype, windSensorTypeToString(actconf.windSensorType));
     content += F(";");   
     content += F("document.SetForm.sendwsdata.selectedIndex = ");
     content += getindex(sendwsdata, String(actconf.windSensor));
@@ -286,7 +288,7 @@ String Settings(int num, String vname[30], String value[30])
     
     // Web page title
     content += F("<h2>");
-    content += String(actconf.devname) + " " + String(actconf.windSensorType);
+    content += String(actconf.devname) + " " + windSensorTypeToString(actconf.windSensorType);
     content += F("</h2>");
     content += String(actconf.crights);
     content += F(", "); 

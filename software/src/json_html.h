@@ -4,7 +4,10 @@ String JSON()
 
     // Read the digital signals from Hall sensors
     sensor1 = boolToInt(digitalRead(INT_PIN1));    // Hall sensor for wind speed
-    sensor2 = boolToInt(digitalRead(INT_PIN2));    // Hall sensor for wind direction
+    if(INT_PIN2 >= 0)
+    {
+      sensor2 = boolToInt(digitalRead(INT_PIN2));    // Hall sensor for wind direction
+    }
     
     // Calculation of wind speed and wind direction see main loop.
     // The main loop calculate the data all 1s.
@@ -44,23 +47,17 @@ String JSON()
     content +=F( "\"License\": \"");
     content += String(actconf.license);
     content +=F( "\",");
-    #ifdef ESP8266
-      content +=F( "\"ESP8266\": {");
-    #elif defined(ESP32)
-      content +=F( "\"ESP32\": {");
-    #endif
+    content +=F( "\"Chip\": {");
     content +=F( "\"SDKVersion\": \"");
     content += String(ESP.getSdkVersion());
     content +=F( "\",");
+    content +=F( "\"ChipID\": \"");
     #ifdef ESP8266
-      content +=F( "\"ChipID\": ");
       content += String(ESP.getChipId());
-      content +=F( ",");
     #elif defined(ESP32)
-      content +=F( "\"ChipModel\": ");
       content += String(ESP.getChipModel());
-      content +=F( ",");
     #endif
+    content +=F( "\",");
     content +=F( "\"CPUSpeed\": {");
     content +=F( "\"Value\": ");
     content += String(ESP.getCpuFreqMHz());
@@ -130,7 +127,7 @@ String JSON()
     content += String(actconf.sensorID);
     content +=F( ",");
     content +=F( "\"SensorType\": \"");
-    content += String(actconf.windSensorType);
+    content += windSensorTypeToString(actconf.windSensorType);
     content +=F( "\",");
     content +=F( "\"SendWindData\": ");
     content += String(actconf.windSensor);

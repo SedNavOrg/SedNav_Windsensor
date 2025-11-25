@@ -120,7 +120,7 @@ String Windv()
  
  // Web page title
  content +=F( "<h2>");
- content += String(actconf.devname) + " " + String(actconf.windSensorType);
+ content += String(actconf.devname) + " " + windSensorTypeToString(actconf.windSensorType);
  content +=F( "</h2>");
  content += String(actconf.crights);
  content +=F( ", "); 
@@ -188,7 +188,7 @@ String Windv()
 
  //########### Environment Values #############
  
- if(String(actconf.windSensorType) == "Ventus" && String(actconf.tempSensorType) == "BME280"){
+ if(actconf.windSensorType == WIND_SENSOR_VENTUS && String(actconf.tempSensorType) == "BME280"){
    content +=F( "<hr align='left'>");
   
    content +=F( "<h3>Environment Values  <blink><data id='info2'></data></blink></h3>");

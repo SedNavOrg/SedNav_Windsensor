@@ -24,16 +24,16 @@ volatile bool flag3 = false;      // Flag for zero wind speed detection (true = 
 int ledPin = 2;                   // LED low activ GPIO 2 (D4)
 int INT_PIN1 = 5;                 // Wind speed GPIO 5 (Hall sensor) (D1)
 int INT_PIN2 = 4;                 // Wind direction GPIO 4 (Hall sensor) (D2)
-int ONE_WIRE_BUS = 12;            // 1Wire bus on GPIO 12 (D6)
+int oneWire_Bus = 12;            // 1Wire bus on GPIO 12 (D6)
 
 // I2C definitions
 int I2C_SCL = 5;                  // I2C SCL
 int I2C_SDA = 4;                  // I2C SDA
-int i2creadyAS5600 = 0;           // Result of I2C scan for AS5600
+bool i2creadyAS5600 = false;           // Result of I2C scan for AS5600
 byte i2cAddressAS5600 = 0x36;     // I2C address AS5600
-int i2creadyMT6701 = 0;           // Result of I2C scan for MT6701
+bool i2creadyMT6701 = false;           // Result of I2C scan for MT6701
 byte i2cAddressMT6701 = 0x06;     // I2C address MT6701
-int i2creadyBME280 = 0;           // Result of I2C scan for BME280
+bool i2creadyBME280 = false;           // Result of I2C scan for BME280
 byte i2cAddressBME280 = 0x76;     // I2C address BME280
 #define SEALEVELPRESSURE_HPA (1013.25)// Sea level air pressure
 
@@ -62,7 +62,7 @@ static float radius = 0.06;       // Radius between center and middle of half he
 static float radius2 = 0.043;     // Radius between center and middle of half hemisphere position (Yachta|Jukolein)
 static float radius3 = 0.055;     // Radius between center and middle of half hemisphere position (Ventus)
 static float lamda = 0.3;         // Lambda is a constant for amemometer type with 3 hemisphere, lamda = 0,3
-static float pi = 3.14159265358979;   // Pi constant
+static constexpr float pi = 3.14159265358979;   // Pi constant
 
 volatile float fieldstrength;     // WLAN field strength
 volatile float quality;           // WLAN quality
@@ -76,14 +76,11 @@ volatile int windspeed_bft;       // Wind speed in [bft]
 volatile float dwspeed;           // Down wind speed for Web interface
 volatile float downwindspeed_kn;  // Down wind speed in [kn]
 volatile float downwindspeed_mps; // Down wind speed in [m/s]
-volatile float term3;             // 3te term
-volatile float term2;             // 2te term
-volatile float term1;             // 1te term
 volatile float rawwinddirection;  // Wind direction 0...360[°] in relation to midle of ship line (midle = 0°) without offset
 volatile float winddirection;     // Wind direction 0...360[°] in relation to midle of ship line (midle = 0°) with offset
 volatile float winddirection2;    // Wind direction 0...180[°] in relation to midle of ship line (midle = 0°) for each boat side with offet
 volatile float winddirection_old; // Last wind direction 0...360[°] in relation to midle of ship line (midle = 0°) with offset
-static float maxwinddirdev = 45;  // Maximum of wind direction deviation in [°] between two measuring values  
+static constexpr float maxwinddirdev = 45;  // Maximum of wind direction deviation in [°] between two measuring values  
 volatile float dirresolution;     // Resolution of wind direction [°]
 volatile int sensor1;             // Output hallsensor signal for wind speed (Web interface)
 volatile int sensor2;             // Output hallsensor signal for wind direction (Web interface)
@@ -129,5 +126,18 @@ String tstype[3] = {"Off", "DS18B20", "BME280"};
 String sendtsd[2] = {"0", "1"};
 String tempunits[2] = {"C", "F"};
 String mdnsservice[2] = {"0", "1"};
+
+#ifdef ESP32
+    portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+    #define NO_INTERRUPTS portENTER_CRITICAL(&mux)
+    #define INTERRUPTS portEXIT_CRITICAL(&mux)
+    #define NO_INTERRUPTS_ISR portENTER_CRITICAL_ISR(&mux)
+    #define INTERRUPTS_ISR portEXIT_CRITICAL_ISR(&mux)
+#else
+    #define NO_INTERRUPTS noInterrupts()
+    #define INTERRUPTS interrupts()
+    #define NO_INTERRUPTS_ISR noInterrupts()
+    #define INTERRUPTS_ISR interrupts()
+#endif
 
 #endif

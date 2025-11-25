@@ -28,251 +28,316 @@ float dewp(float temp, float humidity) {
 }
 
 void calculationData(){
-  // Atomic Block (not interruptible)
-  noInterrupts();
+  // Copy necessary data
+  float local_temperature;
+  float local_quality;
+  float local_fieldstrength;
+  float local_magnitude;
+  float local_magsensor;
+  float local_rawwinddirection;
+  float local_airtemperature;
+  float local_airpressure;
+  float local_airhumidity;
+  float local_altitude;
+  float local_dewpoint;
+  float local_winddirection;
+  float local_winddirection2;
+  float local_dirresolution;
+  float local_windspeed_hz;
+  float local_windspeed_mps;
+  NO_INTERRUPTS;
+  float local_time1 = time1;
+  float local_time1_avg = time1_avg;
+  float local_time2_avg = time2_avg;
+  INTERRUPTS;
+
   // Is connected with extern WLAN network
   if(WiFi.localIP().toString() != "0.0.0.0"){
-    fieldstrength = float(WiFi.RSSI());
-    if(fieldstrength > 0){
-      fieldstrength = -100.0;
+    local_fieldstrength = float(WiFi.RSSI());
+    if(local_fieldstrength > 0){
+      local_fieldstrength = -100.0;
     }
-    quality = 100  - (((fieldstrength * -1) - 50) * 2);
-    if(quality < 0){
-      quality = 0;
+    local_quality = 100  - (((local_fieldstrength * -1) - 50) * 2);
+    if(local_quality < 0){
+      local_quality = 0;
     }
-    if(quality > 100){
-      quality = 100;
+    if(local_quality > 100){
+      local_quality = 100;
     }
   }
   else{
-    fieldstrength = 0;
-    quality = 0;
+    local_fieldstrength = 0;
+    local_quality = 0;
   }
 
   // Read device temperature 1Wire DS18B20
   // The DS18B20 neeed a temperature compensation because the data rate is 2 Hz and heats up the sensor
   if(String(actconf.tempSensorType) == "DS18B20"){
-    DS18B20.requestTemperatures();
+    DS18B20->requestTemperatures();
     if(String(actconf.tempUnit) == "C"){
-      temperature = float(DS18B20.getTempCByIndex(0) - 6.0);            // With temperature compensation
+      local_temperature = float(DS18B20->getTempCByIndex(0) - 6.0);            // With temperature compensation
     }
     else{
-      temperature = float(DS18B20.getTempFByIndex(0) - (6.0 * 9 / 5));  // With temperature compensation
+      local_temperature = float(DS18B20->getTempFByIndex(0) - (6.0 * 9 / 5));  // With temperature compensation
     }
   }
 
   // time1 = time in [ms] for one rotation
   // time2 = time in [ms] between wind speed sensor and wind direction sensor
-  if(time1_avg == 0){
-    time1_avg = 0.1;
+  if(local_time1_avg == 0){
+    local_time1_avg = 0.1;
   }
 
-  // Calculate wind direction for WiFi1000 wind sensor
-  if(String(actconf.windSensorType) == "WiFi 1000"){
+  // Calculate wind direction
+  switch (actconf.windSensorType)
+  {
+  case WIND_SENSOR_WIFI_1000:
     // Calculate only wind direction when time values ok
-    if(time1_avg < 1000 && time2_avg < 1000){
+    if(local_time1_avg < 1000 && local_time2_avg < 1000){
       // Raw wind direction 0...360°, dir[°] = time2[ms] / time1[ms] *360
-      rawwinddirection = time2_avg / time1_avg * 360;
+      local_rawwinddirection = local_time2_avg / local_time1_avg * 360;
     }
-    magnitude = 0; // Set values for AS5600
-    magsensor = 0;
-  }
+    local_magnitude = 0; // Set values for AS5600
+    local_magsensor = 0;
+    break;
   
-  // Calculate wind direction for Yachta, Jukolein and Ventus wind sensor
-  if(String(actconf.windSensorType) == "Yachta" || String(actconf.windSensorType) == "Jukolein"){
+  case WIND_SENSOR_YACHTA:
+  case WIND_SENSOR_JUKOLEIN:
+  case WIND_SENSOR_SEDNAV_C6:
     // Read only magnetic values if the I2C device is ready
-    if(i2creadyAS5600 == 1){
-      magnitude = ams5600.getMagnitude();
-      magsensor = ams5600.getRawAngle() * 0.087; // 0...4096 which is 0.087 of a degree
+    if(i2creadyAS5600){
+      local_magnitude = ams5600.getMagnitude();
+      local_magsensor = ams5600.getRawAngle() * 0.087; // 0...4096 which is 0.087 of a degree
       // Limiting values outer range
-      if(magsensor < 0){
-        magsensor = 0;
-      }
-      if(magsensor > 360){
-        magsensor = 360;
+      if(local_magsensor < 0){
+        local_magsensor = 0;
+      } else if(local_magsensor > 360){
+        local_magsensor = 360;
       }
     }
     else{
-      magnitude = 0;
-      magsensor = 0;
+      local_magnitude = 0;
+      local_magsensor = 0;
     }
-    rawwinddirection = magsensor;
-  }
+    local_rawwinddirection = local_magsensor;
+    break;
 
-  // Calculate wind direction for Yachta 2.0 (Attention! Inverse rotation because the MT6701 measure counter clock)
-  if(String(actconf.windSensorType) == "Yachta 2.0"){
+  // Attention! Inverse rotation because the MT6701 measure counter clock
+  case WIND_SENSOR_YACHTA_2_0:
     // Read only magnetic values if the I2C device is ready
-    if(i2creadyMT6701 == 1){
-      magnitude = 0;                              // 0...16384 which is 0.0219 of a degree
-      magsensor = 360 - mt6701.getDegreesAngle(); // value in degree
+    if(i2creadyMT6701){
+      local_magnitude = 0;                              // 0...16384 which is 0.0219 of a degree
+      local_magsensor = 360 - mt6701.getDegreesAngle(); // value in degree
       // Limiting values outer range
-      if(magsensor < 0){
-        magsensor = 0;
-      }
-      if(magsensor > 360){
-        magsensor = 360;
+      if(local_magsensor < 0){
+        local_magsensor = 0;
+      } else if(local_magsensor > 360){
+        local_magsensor = 360;
       }
     }
     else{
-      magnitude = 0;
-      magsensor = 0;
+      local_magnitude = 0;
+      local_magsensor = 0;
     }
-    rawwinddirection = magsensor;
-  }
-
-  // Calculate wind direction for Ventus wind sensor (Attention! Inverse rotation because the AS5600 measure on bottom side)
-  if(String(actconf.windSensorType) == "Ventus"){
+    local_rawwinddirection = local_magsensor;
+    break;
+  
+  // Attention! Inverse rotation because the AS5600 measure on bottom side
+  case WIND_SENSOR_VENTUS:
     // Read only magnetic values if the I2C device is ready
-    if(i2creadyAS5600 == 1){
-      magnitude = ams5600.getMagnitude();
-      magsensor = 360 - ams5600.getRawAngle() * 0.087; // 0...4096 which is 0.087 of a degree
+    if(i2creadyAS5600){
+      local_magnitude = ams5600.getMagnitude();
+      local_magsensor = 360 - ams5600.getRawAngle() * 0.087; // 0...4096 which is 0.087 of a degree
       // Limiting values outer range
-      if(magsensor < 0){
-        magsensor = 0;
-      }
-      if(magsensor > 360){
-        magsensor = 360;
+      if(local_magsensor < 0){
+        local_magsensor = 0;
+      } else if(local_magsensor > 360){
+        local_magsensor = 360;
       }
     }
     else{
-      magnitude = 0;
-      magsensor = 0;
+      local_magnitude = 0;
+      local_magsensor = 0;
     }
-    rawwinddirection = magsensor;
+    local_rawwinddirection = local_magsensor;
     
-    if(i2creadyBME280 == 1 && String(actconf.tempSensorType) == "BME280"){
+    if(i2creadyBME280 && String(actconf.tempSensorType) == "BME280"){
       if(String(actconf.tempUnit) == "C"){
-        airtemperature = bme.readTemperature();
+        local_airtemperature = bme.readTemperature();
       }
       else{
-        airtemperature = convertCtoF(bme.readTemperature());
+        local_airtemperature = convertCtoF(bme.readTemperature());
       }
-      airpressure = bme.readPressure() / 100;
-      airhumidity = bme.readHumidity();
-      dewpoint = dewp(airtemperature, airhumidity);
-      altitude = bme.readAltitude(SEALEVELPRESSURE_HPA);
+      local_airpressure = bme.readPressure() / 100;
+      // J'en suis ici !
+      local_airhumidity = bme.readHumidity();
+      local_dewpoint = dewp(local_airtemperature, local_airhumidity);
+      local_altitude = bme.readAltitude(SEALEVELPRESSURE_HPA);
     }
     else{
-      airtemperature = 0;
-      airpressure = 0;
-      airhumidity = 0;
-      dewpoint = 0;
-      altitude = 0;
+      local_airtemperature = 0;
+      local_airpressure = 0;
+      local_airhumidity = 0;
+      local_dewpoint = 0;
+      local_altitude = 0;
     }
-    rawwinddirection = magsensor;
-    
+    local_rawwinddirection = local_magsensor;
+    break;
   }
   
   // Wind direction with offset
-  if((rawwinddirection + actconf.offset) >= 0 && (rawwinddirection + actconf.offset) <= 360){
-    winddirection = rawwinddirection + actconf.offset;
+  if((local_rawwinddirection + actconf.offset) >= 0 && (local_rawwinddirection + actconf.offset) <= 360){
+    local_winddirection = local_rawwinddirection + actconf.offset;
   }
-  if((rawwinddirection + actconf.offset) > 360){
-    winddirection = rawwinddirection + actconf.offset - 360;
+  if((local_rawwinddirection + actconf.offset) > 360){
+    local_winddirection = local_rawwinddirection + actconf.offset - 360;
   }
-  if((rawwinddirection + actconf.offset) < 0){
-    winddirection = 360 - (abs(actconf.offset) - rawwinddirection);
+  if((local_rawwinddirection + actconf.offset) < 0){
+    local_winddirection = 360 - (abs(actconf.offset) - local_rawwinddirection);
   }
   
   // Limiting max deviations between two measuring values of wind direction
-  if(abs(winddirection - winddirection_old) > maxwinddirdev && winddirection > maxwinddirdev && winddirection < 360 -maxwinddirdev){
-    if(winddirection - winddirection_old > 0){
-      winddirection = winddirection_old + maxwinddirdev;
+  if(abs(local_winddirection - winddirection_old) > maxwinddirdev && local_winddirection > maxwinddirdev && local_winddirection < 360 - maxwinddirdev){
+    if(local_winddirection - winddirection_old > 0){
+      local_winddirection = winddirection_old + maxwinddirdev;
     }
     else{
-      winddirection = winddirection_old - maxwinddirdev;
+      local_winddirection = winddirection_old - maxwinddirdev;
     }
   }
-  winddirection_old = winddirection;
+  winddirection_old = local_winddirection;
   
   // Wind direction 0...180° for each boat side
-  if(winddirection >= 0 && winddirection <= 180){
-    winddirection2 = winddirection;
+  if(local_winddirection >= 0 && local_winddirection <= 180){
+    local_winddirection2 = local_winddirection;
   }
   else{
-    winddirection2 = 360 - winddirection;
+    local_winddirection2 = 360 - local_winddirection;
   }
-  // Calculate wind direction resolution for NoRa1000 wind sensor
-  if(String(actconf.windSensorType) == "WiFi 1000"){
+
+  // Calculate wind direction resolution
+  switch (actconf.windSensorType)
+  {
+  case WIND_SENSOR_WIFI_1000:
     // Wind direction resolution res[°] = 360 / time1
-    dirresolution = 360 / (time1 * 10);  // now 100us counter
-    if(dirresolution > 20.0){
-      dirresolution = 0.0;
+    local_dirresolution = 360 / (local_time1 * 10);  // now 100us counter
+    if(local_dirresolution > 20.0){
+      local_dirresolution = 0.0;
     }
+    break;
+  
+  case WIND_SENSOR_YACHTA:
+  case WIND_SENSOR_JUKOLEIN:
+  case WIND_SENSOR_VENTUS:
+  case WIND_SENSOR_SEDNAV_C6:
+    local_dirresolution = 0.087;
+    break;
+  
+  case WIND_SENSOR_YACHTA_2_0:
+    local_dirresolution = 0.0219;
+    break;
   }
-  // Calculate wind direction resolution for Yachta and Jukolein wind sensor
-  if(String(actconf.windSensorType) == "Yachta" || String(actconf.windSensorType) == "Jukolein" || String(actconf.windSensorType) == "Ventus"){
-    dirresolution = 0.087;
-  }
-  // Calculate wind direction resolution for Yachta 2.0 wind sensor
-  if(String(actconf.windSensorType) == "Yachta 2.0"){
-    dirresolution = 0.0219;
-  }
+
   // Calculate only wind speed when time values ok
-  if(time1_avg < 1000 && time2_avg < 1000){
-    if(String(actconf.windSensorType) == "WiFi 1000" || String(actconf.windSensorType) == "Ventus"){
+  if(local_time1_avg < 1000 && local_time2_avg < 1000){
+    switch (actconf.windSensorType)
+    {
+    case WIND_SENSOR_WIFI_1000:
+    case WIND_SENSOR_VENTUS:
       // Wind speed n[Hz] = 1 / time1[ms] *1000  // 1 pulse per round
-      windspeed_hz = 1.0 / time1_avg * 1000;
-    }
-    if(String(actconf.windSensorType) == "Yachta" || String(actconf.windSensorType) == "Yachta 2.0" || String(actconf.windSensorType) == "Jukolein"){
+      local_windspeed_hz = 1.0 / local_time1_avg * 1000;
+      break;
+    
+    case WIND_SENSOR_YACHTA:
+    case WIND_SENSOR_YACHTA_2_0:
+    case WIND_SENSOR_JUKOLEIN:
+    case WIND_SENSOR_SEDNAV_C6:
       // Wind speed n[Hz] = 1 / time1[ms] *1000 / 2
-      windspeed_hz = 1.0 / time1_avg * 1000 / 2; // 2 pulses per round
+      local_windspeed_hz = 1.0 / local_time1_avg * 1000 / 2; // 2 pulses per round
+      break;
     }
   }
 
   // Eleminate the big start value direct after wind sensor start
-  if(windspeed_hz > 100){
-    windspeed_hz = 0;
+  if(local_windspeed_hz > 100){
+    local_windspeed_hz = 0;
   }
 
   // If zero wind speed the set wind speed to 0 Hz
   // Controlled via Timer4 routine
-  if(flag3 == true){
-      windspeed_hz = 0.0;
+  if(flag3){
+    local_windspeed_hz = 0.0;
   }
 
-  if(String(actconf.windSensorType) == "WiFi 1000"){
+  // Calculate wind speed based on sensor type
+  switch (actconf.windSensorType)
+  {
+  case WIND_SENSOR_WIFI_1000:
     // Wind speed, v[m/s] = (2 * Pi * n[Hz] * r[m]) / lamda[1]
-    windspeed_mps = (2 * pi * windspeed_hz * radius) / lamda;
-  }
-  if(String(actconf.windSensorType) == "Yachta" || String(actconf.windSensorType) == "Yachta 2.0" || String(actconf.windSensorType) == "Jukolein"){
+    local_windspeed_mps = (2 * pi * local_windspeed_hz * radius) / lamda;
+    break;
+  
+  case WIND_SENSOR_YACHTA:
+  case WIND_SENSOR_YACHTA_2_0:
+  case WIND_SENSOR_JUKOLEIN:
+  case WIND_SENSOR_SEDNAV_C6:
     // Wind speed, v[m/s] = (2 * Pi * n[Hz] * r[m]) / lamda[1]
-    windspeed_mps = (2 * pi * windspeed_hz * radius2) / lamda;
-  }
-  if(String(actconf.windSensorType) == "Ventus"){
+    local_windspeed_mps = (2 * pi * local_windspeed_hz * radius2) / lamda;
+    break;
+  
+  case WIND_SENSOR_VENTUS:
     // Wind speed, v[m/s] = (2 * Pi * n[Hz] * r[m]) / lamda[1]
-    windspeed_mps = (2 * pi * windspeed_hz * radius3) / lamda;
+    local_windspeed_mps = (2 * pi * local_windspeed_hz * radius3) / lamda;
+    break;
   }
   
   // Calibration of wind speed data
-  windspeed_mps = windspeed_mps * actconf.calslope + actconf.caloffset;
-  if(windspeed_mps < 0){
-    windspeed_mps = 0;
+  local_windspeed_mps = local_windspeed_mps * actconf.calslope + actconf.caloffset;
+  if(local_windspeed_mps < 0){
+    local_windspeed_mps = 0;
   }
 
-  // Wind speed, v[km/h] = v[m/s] * 3.6
-  windspeed_kph = windspeed_mps * 3.6;
   // Wind speed, v[kn] = v[m/s] * 1.94384
-  windspeed_kn = windspeed_mps * 1.94384;
-  term3 = 0.0000222 * windspeed_kn;
-  term3 *= windspeed_kn;
-  term3 *= windspeed_kn;
-  term2 = 0.0034132 * windspeed_kn;
-  term2 *= windspeed_kn;
-  term1 = 0.2981666 * windspeed_kn;
+  float local_windspeed_kn = local_windspeed_mps * 1.94384;
+  float v2 = local_windspeed_kn * local_windspeed_kn;
+  float term3 = 0.0000222 * v2 * local_windspeed_kn;
+  float term2 = 0.0034132 * v2;
+  float term1 = 0.2981666 * local_windspeed_kn;
   // Wind speed v[bft] = 0.0000222 * v³[kn] - 0.0034132 * v²[kn] + 0.2981666 * v[kn] + 0.1467082
-  windspeed_bft = roundFloat2Int(term3 - term2 + term1 + 0.1467082);
+  int local_windspeed_bft = roundFloat2Int(term3 - term2 + term1 + 0.1467082);
   // Limiting wind speed for bft lower than 12
-  if(windspeed_bft > 12){
-    windspeed_bft = 12;
+  if(local_windspeed_bft > 12){
+    local_windspeed_bft = 12;
   }
-  // End Atomic Block (not interruptible)
-  interrupts();
+
+  // Store new data
+  NO_INTERRUPTS;
+  fieldstrength = local_fieldstrength;
+  quality = local_quality;
+  temperature = local_temperature;
+  time1_avg = local_time1_avg;
+  magnitude = local_magnitude;
+  magsensor = local_magsensor;
+  rawwinddirection = local_rawwinddirection;
+  airtemperature = local_airtemperature;
+  airpressure = local_airpressure;
+  airhumidity = local_airhumidity;
+  altitude = local_altitude;
+  dewpoint = local_dewpoint;
+  winddirection = local_winddirection;
+  winddirection2 = local_winddirection2;
+  dirresolution = local_dirresolution;
+  windspeed_hz = local_windspeed_hz;
+  windspeed_mps = local_windspeed_mps;
+  windspeed_kph = local_windspeed_mps * 3.6; // Wind speed, v[km/h] = v[m/s] * 3.6
+  windspeed_kn = local_windspeed_kn;
+  windspeed_bft = local_windspeed_bft;
+  INTERRUPTS;
 }
 
 void simulationData(){
   // Atomic Block (not interruptible)
-  noInterrupts();
+  NO_INTERRUPTS;
   int i = 0;
   int speedmps;         // Actual calculated speed in [m/s]
   int winddir;          // Actual calculated wind direction in [°]
@@ -385,12 +450,10 @@ void simulationData(){
   windspeed_kph = windspeed_mps * 3.6;
   // Wind speed, v[kn] = v[m/s] * 1.94384
   windspeed_kn = windspeed_mps * 1.94384;
-  term3 = 0.0000222 * windspeed_kn;
-  term3 *= windspeed_kn;
-  term3 *= windspeed_kn;
-  term2 = 0.0034132 * windspeed_kn;
-  term2 *= windspeed_kn;
-  term1 = 0.2981666 * windspeed_kn;
+  float v2 = windspeed_kn * windspeed_kn;
+  float term3 = 0.0000222 * v2 * windspeed_kn;
+  float term2 = 0.0034132 * v2;
+  float term1 = 0.2981666 * windspeed_kn;
   // Wind speed v[bft] = 0.0000222 * v³[kn] - 0.0034132 * v²[kn] + 0.2981666 * v[kn] + 0.1467082
   windspeed_bft = roundFloat2Int(term3 - term2 + term1 + 0.1467082);
   // Limiting wind speed for bft lower than 12
@@ -398,5 +461,5 @@ void simulationData(){
     windspeed_bft = 12;
   }
   // End Atomic Block (not interruptible)
-  interrupts();
+  INTERRUPTS;
 }

@@ -22,7 +22,7 @@ String Devinfo()
  
  // Web page title
  content +=F( "<h2>");
- content += String(actconf.devname) + " " + String(actconf.windSensorType);
+ content += String(actconf.devname) + " " + windSensorTypeToString(actconf.windSensorType);
  content +=F( "</h2>");
  content += String(actconf.crights);
  content +=F( ", "); 
@@ -55,7 +55,7 @@ String Devinfo()
  content +=F( "</tr>");
  
  content +=F( "<tr>");
- content +=F( "<td><h3>ESP8266 Informations</h3></td>");
+ content +=F( "<td><h3>Chip Informations</h3></td>");
  content +=F( "<td></td>");
  content +=F( "<td></td>");
  content +=F( "</tr>");
@@ -69,11 +69,7 @@ String Devinfo()
  content +=F( "</tr>");
 
  content +=F( "<tr>");
- #ifdef ESP8266
-  content +=F( "<td>ESP8266 Chip ID</td>");
- #elif defined(ESP32)
-  content +=F( "<td>ESP32 Chip Model</td>");
- #endif
+ content +=F( "<td>Chip Chip ID</td>");
  content +=F( "<td><input type='text' name='cid' size='15' value='");
  #ifdef ESP8266
   content += String(ESP.getChipId());
@@ -85,7 +81,7 @@ String Devinfo()
  content +=F( "</tr>");
 
  content +=F( "<tr>");
- content +=F( "<td>ESP8266 Speed</td>");
+ content +=F( "<td>Chip Speed</td>");
  content +=F( "<td><input type='text' name='spd' size='15' value='");
  content += String(ESP.getCpuFreqMHz());
  content +=F( "'></td>");
@@ -218,53 +214,63 @@ String Devinfo()
  content +=F( "<td>[<data id='s1unit'></data>]</td>");
  content +=F( "</tr>");
 
- if(String(actconf.windSensorType) == "WiFi 1000"){
-   content +=F( "<tr>");
-   content +=F( "<td>Sensor 2 (Direction)</td>");
-   content +=F( "<td><input id='sensor2' type='text' name='wsensor2' size='15' value='0'></td>");
-   content +=F( "<td>[<data id='s2unit'></data>]</td>");
-   content +=F( "</tr>");
+ // sensor-specific rows: use switch on enum
+ switch(actconf.windSensorType){
+   case WIND_SENSOR_WIFI_1000:
+     content +=F( "<tr>");
+     content +=F( "<td>Sensor 2 (Direction)</td>");
+     content +=F( "<td><input id='sensor2' type='text' name='wsensor2' size='15' value='0'></td>");
+     content +=F( "<td>[<data id='s2unit'></data>]</td>");
+     content +=F( "</tr>");
 
-   content +=F( "<tr>");
-   content +=F( "<td>Pulse Counter</td>");
-   content +=F( "<td><input id='pcounter' type='text' name='pcounter' size='15' value='0'></td>");
-   content +=F( "<td>[<data id='pcunit'></data>]</td>");
-   content +=F( "</tr>");
-  
-   content +=F( "<tr>");
-   content +=F( "<td>Time 1 (Speed)</td>");
-   content +=F( "<td><input id='time1' type='text' name='wtime1' size='15' value='0'></td>");
-   content +=F( "<td>[<data id='t1unit'></data>]</td>");
-   content +=F( "</tr>");
-  
-   content +=F( "<tr>");
-   content +=F( "<td>Time 2 (Direction)</td>");
-   content +=F( "<td><input id='time2' type='text' name='wtime2' size='15' value='0'></td>");
-   content +=F( "<td>[<data id='t2unit'></data>]</td>");
-   content +=F( "</tr>");
+     content +=F( "<tr>");
+     content +=F( "<td>Pulse Counter</td>");
+     content +=F( "<td><input id='pcounter' type='text' name='pcounter' size='15' value='0'></td>");
+     content +=F( "<td>[<data id='pcunit'></data>]</td>");
+     content +=F( "</tr>");
+    
+     content +=F( "<tr>");
+     content +=F( "<td>Time 1 (Speed)</td>");
+     content +=F( "<td><input id='time1' type='text' name='wtime1' size='15' value='0'></td>");
+     content +=F( "<td>[<data id='t1unit'></data>]</td>");
+     content +=F( "</tr>");
+    
+     content +=F( "<tr>");
+     content +=F( "<td>Time 2 (Direction)</td>");
+     content +=F( "<td><input id='time2' type='text' name='wtime2' size='15' value='0'></td>");
+     content +=F( "<td>[<data id='t2unit'></data>]</td>");
+     content +=F( "</tr>");
+     break;
+
+   case WIND_SENSOR_YACHTA:
+   case WIND_SENSOR_JUKOLEIN:
+   case WIND_SENSOR_VENTUS:
+   case WIND_SENSOR_SEDNAV_C6:
+     content +=F( "<tr>");
+     content +=F( "<td>Magn. Flux Density</td>");
+     content +=F( "<td><input id='magnitude' type='text' name='magnitude' size='15' value='0'></td>");
+     content +=F( "<td>[<data id='magnitudeunit'></data>]</td>");
+     content +=F( "</tr>");
+     
+     content +=F( "<tr>");
+     content +=F( "<td>Magn. Sensor (Direction)</td>");
+     content +=F( "<td><input id='magsensor' type='text' name='magsensor' size='15' value='0'></td>");
+     content +=F( "<td>[<data id='magunit'></data>]</td>");
+     content +=F( "</tr>");
+     break;
+
+   default:
+     // default: no additional rows
+     break;
  }
 
- if(String(actconf.windSensorType) == "Yachta" || String(actconf.windSensorType) == "Jukolein" || String(actconf.windSensorType) == "Ventus"){
-   content +=F( "<tr>");
-   content +=F( "<td>Magn. Flux Density</td>");
-   content +=F( "<td><input id='magnitude' type='text' name='magnitude' size='15' value='0'></td>");
-   content +=F( "<td>[<data id='magnitudeunit'></data>]</td>");
-   content +=F( "</tr>");
-   
-   content +=F( "<tr>");
-   content +=F( "<td>Magn. Sensor (Direction)</td>");
-   content +=F( "<td><input id='magsensor' type='text' name='magsensor' size='15' value='0'></td>");
-   content +=F( "<td>[<data id='magunit'></data>]</td>");
-   content +=F( "</tr>");
- }
-  
  content +=F( "<tr>");
  content +=F( "<td>Rotation Speed</td>");
  content +=F( "<td><input id='rotspeed' type='text' name='wrotspeed' size='15' value='0'></td>");
  content +=F( "<td>[<data id='rotunit'></data>]</td>");
  content +=F( "</tr>");
 
- if(String(actconf.windSensorType) == "Ventus" && String(actconf.tempSensorType) == "BME280"){
+ if(actconf.windSensorType == WIND_SENSOR_VENTUS && String(actconf.tempSensorType) == "BME280"){
    content +=F( "<tr>");
    content +=F( "<td><h3>BME280 Informations<br><blink><data id='info2'></data></blink></h3></td>");
    content +=F( "<td></td>");

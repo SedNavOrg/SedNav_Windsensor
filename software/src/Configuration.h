@@ -3,6 +3,17 @@
 
 // Default configuration
 // Types 'byte' und 'word' doesn't work!
+
+// Enum for wind sensor types
+enum WindSensorType {
+  WIND_SENSOR_WIFI_1000,
+  WIND_SENSOR_YACHTA,
+  WIND_SENSOR_YACHTA_2_0,
+  WIND_SENSOR_JUKOLEIN,
+  WIND_SENSOR_VENTUS,
+  WIND_SENSOR_SEDNAV_C6
+};
+
 typedef struct {
   int valid = 11;                           // Number of configuration (Please change when the structure or values are changed)
   int crypt = 0;                            // Activate for critical webside a password query [0 = off|1 = on]
@@ -29,7 +40,10 @@ typedef struct {
   char instrumentType[8] = "complex";       // Instrument type [simple|complex] simple = Canvas HTML5 , complex = Canvas Steel Series library
   int instrumentSize = 400;                 // Instrument size X * Y [pix] [200|250|300|350|400|450|500|550|600]
   int sensorID = 0;                         // ID of sensor [0...9]
-  char windSensorType[15] = "Yachta 2.0";   // Type of wind sensor [WiFi 1000|Yachta|Yachta 2.0|Jukolein|Ventus]
+  #ifndef SENSOR_TYPE
+    #define SENSOR_TYPE WIND_SENSOR_WIFI_1000
+  #endif
+  WindSensorType windSensorType = SENSOR_TYPE;  // Type of wind sensor
   int windSensor = 1;                       // Send wind data 0=off 1=on (WIMWV, WIVWR, WIVPW, PWINF) or Serial or JSON
   char windType[2] = "R";                   // Type of wind R=relative, T=true
   int offset = 0;                           // Offset of wind direction [-180°...+180°]

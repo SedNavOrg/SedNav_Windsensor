@@ -51,8 +51,8 @@
 AMS_5600 ams5600;            // Declare magnetic rotation sensor AS5600
 MT6701I2C mt6701(&Wire);    // Declare magnetic rotation sensor MT6701
 Adafruit_BME280 bme;        // Declare environment sensor BME280
-OneWire oneWire(ONE_WIRE_BUS); // Declare 1Wire
-DallasTemperature DS18B20(&oneWire); // Declare DS18B20
+OneWire* oneWire = nullptr; // Declare 1Wire
+DallasTemperature* DS18B20 = nullptr; // Declare DS18B20
 configData actconf;         // Actual configuration, Global variable
                             // Overload with old EEPROM configuration by start. It is necessarry for port and serspeed
                             // Don't change the position!
@@ -108,13 +108,29 @@ WiFiServer server(actconf.dataport);  // Declare WiFi NMEA server port
 // Setup section
 //*********************************************************************************************
 void setup() {
-   // Start bus systems
-   Wire.begin();                        // Start I2C
-   bme.begin(i2cAddressBME280);         // Start BME280
+  // setup flash on esp32
+  #if defined(ESP32)
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      nvs_flash_erase();
+      nvs_flash_init();
+    }
+  #endif
 
-   // !!!!!! Uncomment this line if you using a new configuration structure !!!!!!
-//  saveEEPROMConfig(defconf);
-  
+  // Make sure the antenna is correctly setup with the Xiao ESP32c6 board
+  #if defined(ARDUINO_XIAO_ESP32C6)
+    pinMode(WIFI_ENABLE, OUTPUT);
+    digitalWrite(WIFI_ENABLE, LOW); // Power on the antenna switch
+    delay(100);
+    #if defined(USE_EXTERNAL_ANTENNA)
+      pinMode(WIFI_ANT_CONFIG, OUTPUT); // pinMode(14, OUTPUT);
+      digitalWrite(WIFI_ANT_CONFIG, HIGH); // HIGH = internal antenna (LOW by default)
+    #endif
+  #endif
+  // NOTE: First-boot EEPROM initialization is handled automatically below.
+  // Uncomment the next line ONLY if you need to force reset EEPROM to defaults during development:
+  // saveEEPROMConfig(defconf);  // Force initialize EEPROM with defaults
+
   // Read the first byte from the EEPROM
   EEPROM.begin(sizeEEPROM);
   value = EEPROM.read(cfgStart);
@@ -139,9 +155,10 @@ void setup() {
     saveEEPROMConfig(actconf);
   }
  
-  // Pin definitions and settings for wind sensor types Yachta and Jukolein
-  if(String(actconf.windSensorType) == "Jukolein"){
-    
+  // Pin definitions and settings for wind sensor types
+  switch (actconf.windSensorType)
+  {
+  case WIND_SENSOR_JUKOLEIN:
     // Pin redefinition for other wind sensor types (Original values see Definition.h)
     // Attention! GPIO 12 is not available! (1Wire)
     // Existing pins
@@ -151,11 +168,9 @@ void setup() {
     // New pins
     I2C_SCL = 5;                // Wind direction magnetic sensor SCL GPIO 5 (AS5600) (D1)
     I2C_SDA = 4;                // Wind direction magnetic sensor SDA GPIO 4 (AS6500) (D2)
-  }
+    break;
 
-  // Pin definitions and settings for wind sensor types Yachta
-  if(String(actconf.windSensorType) == "Yachta"){
-    
+  case WIND_SENSOR_YACHTA:
     // Pin redefinition for other wind sensor types (Original values see Definition.h)
     // Attention! GPIO 12 is not available! (1Wire)
     // Existing pins
@@ -165,10 +180,9 @@ void setup() {
     // New pins
     I2C_SCL = 5;                // Wind direction magnetic sensor SCL GPIO 5 (AS5600) (D1)
     I2C_SDA = 4;                // Wind direction magnetic sensor SDA GPIO 4 (AS6500) (D2)
-  }
+    break;
 
-  if(String(actconf.windSensorType) == "Yachta 2.0"){
-    
+  case WIND_SENSOR_YACHTA_2_0:
     // Pin redefinition for other wind sensor types (Original values see Definition.h)
     // Attention! GPIO 12 is not available! (1Wire)
     // Existing pins
@@ -179,11 +193,21 @@ void setup() {
     I2C_SCL = 5;                // Wind direction magnetic sensor SCL GPIO 5 (MT6701) (D1)
     I2C_SDA = 4;                // Wind direction magnetic sensor SDA GPIO 4 (MT6701) (D2)
     mt6701.begin(I2C_SDA, I2C_SCL);
-  }
+    break;
 
-  // Pin definitions and settings for wind sensor types Ventus
-  if(String(actconf.windSensorType) == "Ventus"){
-    
+  case WIND_SENSOR_SEDNAV_C6:
+    // Pin redefinition for other wind sensor types (Original values see Definition.h)
+    oneWire_Bus = 18;
+    // Existing pins
+    ledPin = 15;                 // LED GPIO 2 (D4)
+    INT_PIN1 = 16;              // Wind speed GPIO 14 (Reed switch) (D5), pin need 10k and 100n for spike reduction
+    INT_PIN2 = -1;              // Wind direction unused
+    // New pins
+    I2C_SCL = 23;                // Wind direction magnetic sensor SCL GPIO 23 (AS5600) (D5)
+    I2C_SDA = 22;                // Wind direction magnetic sensor SDA GPIO 22 (AS5600) (D4)
+    break;
+
+  case WIND_SENSOR_VENTUS:
     // Pin redefinition for other wind sensor types (Original values see Definition.h)
     // Attention! GPIO 12 is not available! (1Wire)
     // Existing pins
@@ -193,11 +217,27 @@ void setup() {
     // New pins
     I2C_SCL = 5;                // Wind direction magnetic sensor SCL GPIO 5 (AS5600) (D1)
     I2C_SDA = 4;                // Wind direction magnetic sensor SDA GPIO 4 (AS6500) (D2)
+    break;
+
+  default:
+    // WiFi 1000 - default configuration (already set in Definitions.h)
+    break;
   }
   
+  // Start OneWire
+  oneWire = new OneWire(oneWire_Bus);
+  DS18B20 = new DallasTemperature(oneWire);
+
+  // Start bus systems
+  Wire.begin(I2C_SDA, I2C_SCL);        // Start I2C
+  bme.begin(i2cAddressBME280);         // Start BME280
+
   // Pin settings
   pinMode(INT_PIN1, INPUT_PULLUP);  // Interrupt input 1 speed
-  pinMode(INT_PIN2, INPUT_PULLUP);  // Interrupt input 2 direction
+  if(INT_PIN2 >= 0)
+  {
+    pinMode(INT_PIN2, INPUT_PULLUP);  // Interrupt input 2 direction
+  }
   pinMode(ledPin, OUTPUT);          // LED Pin output
   digitalWrite(ledPin, LOW);        // Switch LED on (inverted!)
 
@@ -207,27 +247,31 @@ void setup() {
 //  DebugPrint(3, "First EEPROM byte: ");
 //  DebugPrintln(3, value);
 
-  // ESP8266 Information Data
+  // Chip Information Data
   DebugPrintln(3, "Booting Sketch...");
   DebugPrint(3, actconf.devname);
   DebugPrint(3, " ");
-  DebugPrint(3, actconf.windSensorType);
+  DebugPrint(3, windSensorTypeToString(actconf.windSensorType));
   DebugPrint(3, " ");
   DebugPrint(3, actconf.fversion);
   DebugPrintln(3, " (C) Norbert Walter");
   DebugPrintln(3, "*********************************************");
   DebugPrintln(3, "");
-  DebugPrintln(3, "Modul Type: ESP8266");
+
+  #ifdef ESP8266
+    DebugPrintln(3, "Module Type: ESP8266");
+  #elif defined(ESP32)
+    DebugPrintln(3, "Module Type: ESP32");
+  #endif
   DebugPrint(3, "SDK-Version: ");
   DebugPrintln(3, ESP.getSdkVersion());
+  DebugPrint(3, "Chip-ID: ");
   #ifdef ESP8266
-    DebugPrint(3, "ESP8266 Chip-ID: ");
     DebugPrintln(3, ESP.getChipId());
   #elif defined(ESP32)
-    DebugPrint(3, "ESP32 Chip-Model: ");
     DebugPrintln(3, ESP.getChipModel());
   #endif
-  DebugPrint(3, "ESP8266 Speed [MHz]: ");  
+  DebugPrint(3, "Chip Speed [MHz]: ");  
   DebugPrintln(3, ESP.getCpuFreqMHz());
   DebugPrint(3, "Free Heap Size [Bytes]: ");
   DebugPrintln(3, ESP.getFreeHeap());
@@ -235,7 +279,7 @@ void setup() {
   DebugPrint(3, "Sensor ID: ");
   DebugPrintln(3, actconf.sensorID);
   DebugPrint(3, "Wind Sensor Type: ");
-  DebugPrintln(3, actconf.windSensorType);
+  DebugPrintln(3, windSensorTypeToString(actconf.windSensorType));
   DebugPrintln(3, "Sensor Type: Wind Speed");
   DebugPrint(3, "Input Pin: GPIO ");
   DebugPrintln(3, INT_PIN1);
@@ -246,14 +290,22 @@ void setup() {
     }
     else{
       DebugPrintln(3, "True ");
-    }    
-  if(String(actconf.windSensorType) == "WiFi 1000"){  
+    }
+  
+  // Print wind direction sensor information
+  switch (actconf.windSensorType)
+  {
+  case WIND_SENSOR_WIFI_1000:
     DebugPrintln(3, "Wind direction");
     DebugPrint(3, "Input Pin: GPIO ");
     DebugPrintln(3, INT_PIN2);
     DebugPrintln(3, "Value Range [°]: 0...360");
-  }
-  if(String(actconf.windSensorType) == "Yachta" || String(actconf.windSensorType) == "Jukolein" || String(actconf.windSensorType) == "Ventus"){
+    break;
+
+  case WIND_SENSOR_YACHTA:
+  case WIND_SENSOR_JUKOLEIN:
+  case WIND_SENSOR_VENTUS:
+  case WIND_SENSOR_SEDNAV_C6:
     DebugPrintln(3, "Wind direction: AS5600");
     DebugPrint(3, "SCL: GPIO ");
     DebugPrintln(3, SCL);
@@ -267,7 +319,7 @@ void setup() {
     DebugPrint(3, ": ");
     Wire.beginTransmission(i2cAddressAS5600);
     if(Wire.endTransmission() == 0){
-      i2creadyAS5600 = 1;                        // Result I2C scan
+      i2creadyAS5600 = true;                        // Result I2C scan
       DebugPrintln(3, "ready");
       DebugPrint(3, "Magnitude [1]: ");
       DebugPrintln(3, ams5600.getMagnitude());
@@ -276,13 +328,13 @@ void setup() {
       DebugPrintln(3, magsensor);
     }
     else{
-      i2creadyAS5600 = 0;                        // Result I2C scan
+      i2creadyAS5600 = false;                        // Result I2C scan
       DebugPrintln(3, "error");
       DebugPrintln(3, "Stop I2C for device AS5600");
     }
-  }
+    break;
 
-  if(String(actconf.windSensorType) == "Yachta 2.0"){
+  case WIND_SENSOR_YACHTA_2_0:
     DebugPrintln(3, "Wind direction: MT6701");
     DebugPrint(3, "SCL: GPIO ");
     DebugPrintln(3, SCL);
@@ -296,7 +348,7 @@ void setup() {
     DebugPrint(3, ": ");
     Wire.beginTransmission(i2cAddressMT6701);
     if(Wire.endTransmission() == 0){
-      i2creadyMT6701 = 1;                       // Result I2C scan
+      i2creadyMT6701 = true;                       // Result I2C scan
       DebugPrintln(3, "ready");
       DebugPrint(3, "Raw Value: ");
       mt6701.begin();
@@ -306,13 +358,14 @@ void setup() {
       DebugPrintln(3, magsensor);
     }
     else{
-      i2creadyMT6701 = 0;                       // Result I2C scan
+      i2creadyMT6701 = false;                       // Result I2C scan
       DebugPrintln(3, "error");
       DebugPrintln(3, "Stop I2C for device MT6701");
     }
+    break;
   }
 
-  if(String(actconf.windSensorType) == "Ventus"){
+  if(actconf.windSensorType == WIND_SENSOR_VENTUS){
     DebugPrintln(3, "Environment Sensor: BME280");
     DebugPrint(3, "SCL: GPIO ");
     DebugPrintln(3, SCL);
@@ -326,7 +379,7 @@ void setup() {
     DebugPrint(3, ": ");
     Wire.beginTransmission(i2cAddressBME280);
     if(Wire.endTransmission() == 0){
-      i2creadyBME280 = 1;                        // Result I2C scan
+      i2creadyBME280 = true;                        // Result I2C scan
       DebugPrintln(3, "ready");
       DebugPrint(3, "Temperature [°C]: ");
       airtemperature = bme.readTemperature();
@@ -342,7 +395,7 @@ void setup() {
       DebugPrintln(3, altitude);
     }
     else{
-      i2creadyBME280 = 0;                        // Result I2C scan
+      i2creadyBME280 = false;                        // Result I2C scan
       DebugPrintln(3, "error");
       DebugPrintln(3, "Stop I2C for device BME280");
     }
@@ -350,7 +403,7 @@ void setup() {
     
   DebugPrintln(3, "Sensor Type: Sensor Temp 1Wire");
   DebugPrint(3, "Input Pin: GPIO ");
-  DebugPrintln(3, ONE_WIRE_BUS);
+  DebugPrintln(3, oneWire_Bus);
   DebugPrintln(3, "Value Range [°C]: -55...125");
   DebugPrint(3, "Send Period [ms]: ");
   DebugPrintln(3, SendPeriod);
@@ -467,34 +520,47 @@ void setup() {
     timer1_attachInterrupt(counter);              // Start interrupt routine counter
     timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP); // 80MHz / 16 => 0,2us
     timer1_write(500);                            // Start timer1 100us @ 0,2us
+    Timer2.attach_ms(50, buildaverage);           // Start timer all 50ms for average building and reading magnetic sensor
+    Timer3.attach_ms(SendPeriod, sendNMEA);       // Data transmission timer for NMEA
+    Timer4.attach_ms(RedSendPeriod, sendNMEA2);   // Data transmission timer with reduced frequence for NMEA
+    Timer5.attach_ms(500, winddata);              // Start Timer all 500ms for wind data calculation
   #elif defined(ESP32)
     // Create timer 0, with prescaler 16 → tick = 0.2 µs
     timer = timerBegin(5000000);  // timer 0 at 5 MHz
     timerAttachInterrupt(timer, &counter); // Attach the ISR
     timerAlarm(timer, 500, true, 0); // Trigger alarm every 500 ticks, so every 100 µs
+
+    // Create other tasks using FreeRTOS instead of timers
+    xTaskCreate(taskBuildAverage, "avg", 4096, NULL, 1, NULL);
+    xTaskCreate(taskSendNMEA, "nmea1", 4096, NULL, 1, NULL);
+    xTaskCreate(taskRedSendNMEA, "rednmea", 4096, NULL, 1, NULL);
+    xTaskCreate(taskWindData, "wind", 4096, NULL, 1, NULL);
   #endif
-  Timer2.attach_ms(50, buildaverage);           // Start timer all 50ms for average building and reading magnetic sensor
-  Timer3.attach_ms(SendPeriod, sendNMEA);       // Data transmission timer for NMEA
-  Timer4.attach_ms(RedSendPeriod, sendNMEA2);   // Data transmission timer with reduced frequence for NMEA
-  Timer5.attach_ms(500, winddata);              // Start Timer all 500ms for wind data calculation
-  
+
   // Work around for start problem by high wind speed > 7rpm (cyclic boot loop)
   // Start interrupts at first in low level mode and wait 4s then change in falling slope mode 
   attachInterrupt(INT_PIN1, interruptRoutine1, LOW); // Start interrupt for wind speed
-  attachInterrupt(INT_PIN2, interruptRoutine2, LOW); // Start Interrupt for wind direction
+  if(INT_PIN2 >= 0)
+  {
+    attachInterrupt(INT_PIN2, interruptRoutine2, LOW); // Start Interrupt for wind direction
+  }
   delay(4000);
   // Start interrupts in falling slope mode
   attachInterrupt(INT_PIN1, interruptRoutine1, FALLING); // Start interrupt for wind speed
-  attachInterrupt(INT_PIN2, interruptRoutine2, FALLING); // Start Interrupt for wind direction
+  if(INT_PIN2 >= 0)
+  {
+    attachInterrupt(INT_PIN2, interruptRoutine2, FALLING); // Start Interrupt for wind direction
+  }
 
   //**************************************************
-   
+  
   // Reset the time variables
+  NO_INTERRUPTS;
   time1 = 0;
   time2 = 0;
   time1_avg = 0;
   time2_avg = 0;
-
+  INTERRUPTS;
 }
  
 //*********************************************************************************************
@@ -506,7 +572,7 @@ void loop() {
   #ifdef ESP8266
     MDNS.update();                    // Update DNS info
   #elif defined(ESP32)
-    // Note needed, it is done automagically in the background
+    // Not needed, it is done automagically in the background
   #endif
   
   // Check if a client is connected

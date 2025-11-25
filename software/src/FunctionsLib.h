@@ -18,7 +18,7 @@ void DebugPrint(int type, const T& value) {
 
 // Interrupt routine for wind speed and Hall sensor data array saving
 void IRAM_ATTR interruptRoutine1() {
-  noInterrupts();
+  NO_INTERRUPTS_ISR;
   // Run if not Demo mode
   if (actconf.serverMode != 4){
     if(marker1 == 0){
@@ -53,12 +53,12 @@ void IRAM_ATTR interruptRoutine1() {
       rpcounter = 0;                    // Reset raw pulse counter for wind direction sensor
     }
   }
-  interrupts();
+  INTERRUPTS_ISR;
 }
 
 // Interrupt routine for wind direction
 void IRAM_ATTR interruptRoutine2() {
-  noInterrupts();
+  NO_INTERRUPTS_ISR;
   // Run if not Demo mode
   if (actconf.serverMode != 4){
     marker2 = 0;
@@ -66,12 +66,12 @@ void IRAM_ATTR interruptRoutine2() {
       rpcounter += 1;                   // Increment raw pulse counter for wind direction sensor
     }
   }
-  interrupts();
+  INTERRUPTS_ISR;
 }
 
 // Timer1 hardware interrupt routine for 100us counter
 void IRAM_ATTR counter(){
-  noInterrupts();
+  NO_INTERRUPTS_ISR;
   if(marker1 == 1){
     counter1 += 1;
   }
@@ -83,80 +83,88 @@ void IRAM_ATTR counter(){
     // Save only every 10 values one value
     if(scounter % 10 == 0){
       sensor1TimeArray[scounter / 10] = digitalRead(INT_PIN1);
-      sensor2TimeArray[scounter / 10] = digitalRead(INT_PIN2);
+      if(INT_PIN2 >= 0)
+      {
+        sensor2TimeArray[scounter / 10] = digitalRead(INT_PIN2);
+      }
     }
     scounter += 1;
   }
-  interrupts();  
+  INTERRUPTS_ISR;  
 }
 
 // Timer2 routine for average building
 void buildaverage() {
-  noInterrupts();
-  int i = 0;
-  float value1 = 0.0;
-  float value2 = 0.0;
-
+  float local_times1[10];
+  float local_times2[10];
+  int local_average;
+  bool average_error = false;
+  
+  NO_INTERRUPTS;
   average = actconf.average;
   // Limiting for average
   if(average < 1){
-    DebugPrintln(1, "Limit error for average [1...10]");
-    DebugPrint(1, "average = ");
-    DebugPrintln(1, average);
     average = 1;
+    average_error = true;
   }
-  if(average > 10){
-    DebugPrintln(1, "Limit error for average [1...10]");
-    DebugPrint(1, "average = ");
-    DebugPrintln(1, average);
+  else if(average > 10){
     average = 10;
+    average_error = true;
   }
+  local_average = average;
+
+  for(int i = 0; i < local_average; i++) {
+    local_times1[i] = timearray1[i];
+    local_times2[i] = timearray2[i];
+  }
+  INTERRUPTS;
 
   // Calculate average values
-  for(i = 0; i < average; i++){
-    value1 += timearray1[i];
-    value2 += timearray2[i];
+  float sum1 = 0, sum2 = 0;
+  for(int i = 0; i < local_average; i++){
+    sum1 += local_times1[i];
+    sum2 += local_times2[i];
   }
   
-  time1_avg =  value1 / average;
-  
+  float local_time1_avg =  sum1 / local_average;
+  float local_time2_avg =  sum2 / local_average;
   // Overflow exception from 0° to 360° and backwarts for time2_avg
-  if((value2 / average) >= 0){                    // If average value from time2 positiv (in range 0°...180°)
-    time2_avg =  value2 / average;
+  if(local_time2_avg < 0){                    // If average value from time2 positiv (in range 0°...180°)
+    local_time2_avg += local_time1_avg;
   }
-  else{                                           // If average value from time2 negativ (in range >180°...360°)
-    time2_avg =  time1_avg + (value2 / average);
+
+  NO_INTERRUPTS;
+  time1_avg = local_time1_avg;
+  time2_avg = local_time2_avg;
+  INTERRUPTS;
+
+  if (average_error)
+  {
+    DebugPrintln(1, "Limit error for average [1...10]");
+    DebugPrint(1, "average = ");
+    DebugPrintln(1, local_average);
   }
-  interrupts();
-}
+  }
 
 // Timer3 routine for NMEA data sending with normal speed (all 1s)
 void sendNMEA() {
-  noInterrupts();
   // Set data sending flag1
-  flag1 = true;
-  interrupts();
+  flag1 = true; // atomic write, no critical section needed
 }
 
 // Timer4 routine for NMEA data sending with reduced speed (all 3s)
 void sendNMEA2() {
-  noInterrupts();
   // Set data sending flag2
   flag2 = true;
   // Flag for zero wind speed detection (true = zero)
-  if(icounter == icounterold){
-    flag3 = true;
-  }
-  else{
-    flag3 = false;
-  }
+  flag3 = (icounter == icounterold);
+  NO_INTERRUPTS;
   icounterold = icounter;
-  interrupts();
+  INTERRUPTS;
 }
 
 // Timer5 routine for calculation of wind data (all 500ms)
 void winddata(){
-  noInterrupts();
   // Simulation if Server Mode 4
   if(actconf.serverMode == 4){
     simulationData();
@@ -164,7 +172,6 @@ void winddata(){
   else{
     calculationData();
   }
-  interrupts();
 }
 
 // Checksum calculation for NMEA
@@ -178,6 +185,66 @@ char CheckSum(String NMEAData) {
   return checksum;
 }
 
+#if defined(ESP32)
+  // ESP32 variants: Use NVS with namespace
+  #include <nvs_flash.h>
+  #include <nvs.h>
+  
+  void saveEEPROMConfig(configData cfg) {
+    // Save configuration using NVS (faster than EEPROM emulation)
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open("config", NVS_READWRITE, &handle);
+    
+    if (err != ESP_OK) {
+      DebugPrintln(1, "NVS open failed");
+      return;
+    }
+    
+    // Write config as binary blob
+    err = nvs_set_blob(handle, "cfg", &cfg, sizeof(cfg));
+    if (err != ESP_OK) {
+      DebugPrintln(1, "NVS write failed");
+    }
+    
+    nvs_commit(handle);
+    nvs_close(handle);
+    
+    DebugPrintln(2, "Config saved to NVS");
+  }
+
+  void eraseEEPROMConfig(configData cfg) {
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open("config", NVS_READWRITE, &handle);
+    
+    if (err == ESP_OK) {
+      nvs_erase_all(handle);
+      nvs_commit(handle);
+      nvs_close(handle);
+      DebugPrintln(2, "NVS erased");
+    }
+  }
+
+  configData loadEEPROMConfig() {
+    configData cfg;
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open("config", NVS_READONLY, &handle);
+    
+    if (err == ESP_OK) {
+      size_t required_size = sizeof(cfg);
+      err = nvs_get_blob(handle, "cfg", &cfg, &required_size);
+      nvs_close(handle);
+      
+      if (err != ESP_OK) {
+        DebugPrintln(1, "NVS read failed, using defaults");
+      }
+    } else {
+      DebugPrintln(1, "NVS open failed for read, using defaults");
+    }
+    
+    return cfg;
+  }
+
+#else
 void eraseEEPROMConfig(configData cfg) {
   // Reset EEPROM bytes to '0' for the length of the data structure
   noInterrupts();                       // Stop all interrupts important for writing in EEPROM
@@ -210,6 +277,7 @@ configData loadEEPROMConfig() {
   EEPROM.end();
   return cfg;
 }
+#endif
 
 // Converting bool to int
 int boolToInt(bool value){
@@ -394,4 +462,93 @@ int encryptPassword(String password, String md5hash){
     return 0;
   }
 }
+
+// Helper function to convert WindSensorType enum to string
+String windSensorTypeToString(WindSensorType type) {
+  switch(type) {
+    case WIND_SENSOR_WIFI_1000:
+      return "WiFi 1000";
+    case WIND_SENSOR_YACHTA:
+      return "Yachta";
+    case WIND_SENSOR_YACHTA_2_0:
+      return "Yachta 2.0";
+    case WIND_SENSOR_JUKOLEIN:
+      return "Jukolein";
+    case WIND_SENSOR_VENTUS:
+      return "Ventus";
+    case WIND_SENSOR_SEDNAV_C6:
+      return "Sednav c6";
+    default:
+      return "WiFi 1000";
+  }
+}
+
+// Helper function to convert string to WindSensorType enum
+WindSensorType stringToWindSensorType(String typeStr) {
+  if (typeStr == "WiFi 1000") {
+    return WIND_SENSOR_WIFI_1000;
+  } else if (typeStr == "Yachta") {
+    return WIND_SENSOR_YACHTA;
+  } else if (typeStr == "Yachta 2.0") {
+    return WIND_SENSOR_YACHTA_2_0;
+  } else if (typeStr == "Jukolein") {
+    return WIND_SENSOR_JUKOLEIN;
+  } else if (typeStr == "Ventus") {
+    return WIND_SENSOR_VENTUS;
+  } else if (typeStr == "Sednav c6") {
+    return WIND_SENSOR_SEDNAV_C6;
+  }
+  return WIND_SENSOR_WIFI_1000;  // Default fallback
+}
+
+#ifdef ESP32
+  // 50 ms task
+  void taskBuildAverage(void *p)
+  {
+    TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    for (;;)
+    {
+      buildaverage();
+      xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(50));
+    }
+  }
+
+  // SendPeriod ms task
+  void taskSendNMEA(void *p)
+  {
+    TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    for (;;)
+    {
+      sendNMEA();
+      xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(SendPeriod));
+    }
+  }
+
+  // RedSendPeriod ms task
+  void taskRedSendNMEA(void *p)
+  {
+    TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    for (;;)
+    {
+      sendNMEA2();
+      xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(RedSendPeriod));
+    }
+  }
+
+  // 500 ms task
+  void taskWindData(void *p)
+  {
+    TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    for (;;)
+    {
+      winddata();
+      xTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(500));
+    }
+  }
+#endif
+
 #endif
