@@ -78,8 +78,10 @@ size_t x = sizeof(long);
 #include "error_html.h"     // Error 404 webpage
 
 // Declarations
-int value;                  // Value from first byte in EEPROM
-int empty;                  // If EEPROM empty without configutation then set to 1 otherwise 0
+#if not defined(ESP32)
+  int value;                  // Value from first byte in EEPROM
+  bool empty;                  // If EEPROM empty without configutation then set to 1 otherwise 0
+#endif
 configData defconf;         // Definition of default configuration data
 configData oldconf;         // Configuration stucture for old config data in EEPROM
 configData newconf;         // Configuration stucture for new config data in EEPROM
@@ -112,6 +114,7 @@ void setup() {
   #if defined(ESP32)
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      DebugPrintln(3, "Error or new version of NVS_Flash found !");
       nvs_flash_erase();
       nvs_flash_init();
     }
@@ -131,20 +134,21 @@ void setup() {
   // Uncomment the next line ONLY if you need to force reset EEPROM to defaults during development:
   // saveEEPROMConfig(defconf);  // Force initialize EEPROM with defaults
 
-  // Read the first byte from the EEPROM
-  EEPROM.begin(sizeEEPROM);
-  value = EEPROM.read(cfgStart);
-  EEPROM.end(); 
-  // If the fist Byte not identical to the first value in the default configuration then saving a default configuration in EEPROM.
-  // Means if the EEPROM empty then saving a default configuration.
-  if(value == defconf.valid){
-    empty = 0;                  // Marker for configuration is present
-  }
-  else{
-    saveEEPROMConfig(defconf);
-    empty = 1;                  // Marker for configuration is missing
-  }
-
+  #if not defined(ESP32)
+    // Read the first byte from the EEPROM
+    EEPROM.begin(sizeEEPROM);
+    value = EEPROM.read(cfgStart);
+    EEPROM.end(); 
+    // If the fist Byte not identical to the first value in the default configuration then saving a default configuration in EEPROM.
+    // Means if the EEPROM empty then saving a default configuration.
+    if(value == defconf.valid){
+      empty = false;                  // Marker for configuration is present
+    }
+    else{
+      saveEEPROMConfig(defconf);
+      empty = true;                  // Marker for configuration is missing
+    }
+  #endif
   // Loading EEPROM configuration
   actconf = loadEEPROMConfig(); // Overload with old EEPROM configuration by start. It is necessarry for serspeed
 
@@ -412,12 +416,18 @@ void setup() {
   DebugPrintln(3, "");
 
   // Debug info for initialize the EEPROM
-  if(empty == 1){
-    DebugPrintln(3, "EEPROM config missing, initialization done");
-  }
-  else{
-    DebugPrintln(3, "EEPROM config present");
-  }
+  #if not defined(ESP32)
+    if(empty){
+      DebugPrint(3, "EEPROM config missing, got value ");
+      DebugPrint(3, value);
+      DebugPrint(3, " instead of ");
+      DebugPrintln(3, defconf.valid);
+      DebugPrintln(3, "EEPROM initialization done.");
+    }
+    else{
+      DebugPrintln(3, "EEPROM config present");
+    }
+  #endif
 
   // Loading EEPROM config
   DebugPrintln(3, "Loading actual EEPROM config");

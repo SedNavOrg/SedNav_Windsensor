@@ -226,6 +226,8 @@ char CheckSum(String NMEAData) {
 
   configData loadEEPROMConfig() {
     configData cfg;
+    configData defconf;
+    
     nvs_handle_t handle;
     esp_err_t err = nvs_open("config", NVS_READONLY, &handle);
     
@@ -235,8 +237,16 @@ char CheckSum(String NMEAData) {
       nvs_close(handle);
       
       if (err != ESP_OK) {
-        DebugPrintln(1, "NVS read failed, using defaults");
+        DebugPrintln(1, "NVS read failed, using defaults and resaving");
+        saveEEPROMConfig(defconf);
+        return defconf;
+      } else if (cfg.valid != defconf.valid)
+      {
+        DebugPrintln(1, "NVS read config not valid, using defaults and resaving");
+        saveEEPROMConfig(defconf);
+        return defconf;
       }
+      
     } else {
       DebugPrintln(1, "NVS open failed for read, using defaults");
     }
