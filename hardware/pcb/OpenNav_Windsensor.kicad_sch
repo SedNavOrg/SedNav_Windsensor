@@ -18736,6 +18736,12 @@
 		(uuid "1a550671-e5cb-4f66-b67e-cc5208004ddb")
 	)
 	(junction
+		(at 132.08 146.05)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "2b361c22-8f3e-4bc2-91b0-230c5fd3c173")
+	)
+	(junction
 		(at 78.74 118.11)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -18746,6 +18752,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "5b72a109-7da9-40a1-a393-d14270a24802")
+	)
+	(junction
+		(at 121.92 138.43)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "701e2edb-ac26-4433-a4a2-731a57abed97")
 	)
 	(junction
 		(at 78.74 125.73)
@@ -18801,6 +18813,16 @@
 	)
 	(wire
 		(pts
+			(xy 132.08 140.97) (xy 132.08 138.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "11e11944-2fd8-4a31-ae43-0d783dde73ec")
+	)
+	(wire
+		(pts
 			(xy 186.69 119.38) (xy 175.26 119.38)
 		)
 		(stroke
@@ -18828,6 +18850,16 @@
 			(type default)
 		)
 		(uuid "27166342-1976-4d14-ade4-8b2c99c34357")
+	)
+	(wire
+		(pts
+			(xy 132.08 138.43) (xy 121.92 138.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "315ed782-25a5-489c-ac9b-f41733dce2f4")
 	)
 	(wire
 		(pts
@@ -18901,6 +18933,16 @@
 	)
 	(wire
 		(pts
+			(xy 132.08 146.05) (xy 179.07 146.05)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6fb05038-de14-44cc-917a-8e4d3f497eee")
+	)
+	(wire
+		(pts
 			(xy 113.03 123.19) (xy 118.11 123.19)
 		)
 		(stroke
@@ -18941,7 +18983,7 @@
 	)
 	(wire
 		(pts
-			(xy 129.54 146.05) (xy 179.07 146.05)
+			(xy 129.54 146.05) (xy 132.08 146.05)
 		)
 		(stroke
 			(width 0)
@@ -19827,7 +19869,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "5k"
+		(property "Value" "4.7k"
 			(at 121.666 127.508 0)
 			(effects
 				(font
@@ -20218,6 +20260,75 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R_Small")
+		(at 132.08 143.51 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "8036bb36-1065-4773-b828-9a0225f0e4ba")
+		(property "Reference" "R3"
+			(at 133.604 142.748 0)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "4.7k"
+			(at 133.604 144.526 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder"
+			(at 132.08 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 132.08 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor, small symbol"
+			(at 132.08 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "ded818bc-e435-452b-9c67-debfe9e2ffc1")
+		)
+		(pin "1"
+			(uuid "f149c198-9e70-42df-af4d-f794a97ebc6b")
+		)
+		(instances
+			(project "OpenNav_Windsensor"
+				(path "/a81e5ad1-b2a3-4a64-8503-427321b39e31"
+					(reference "R3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:VCC")
 		(at 59.69 68.58 0)
 		(unit 1)
@@ -20442,7 +20553,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "5k"
+		(property "Value" "4.7k"
 			(at 117.094 127.254 0)
 			(effects
 				(font

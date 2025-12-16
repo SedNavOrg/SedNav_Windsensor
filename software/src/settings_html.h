@@ -531,6 +531,7 @@ String Settings(int num, String vname[30], String value[30])
     content += F("<option value='Yachta 2.0'>Yachta 2.0</option>");
     content += F("<option value='Jukolein'>Jukolein</option>");
     content += F("<option value='Ventus'>Ventus</option>");
+    content += F("<option value='Sednav c6'>Sednav c6</option>");
     content += F("</select>");
     content += F("</td>");
     content += F("<td></td>");

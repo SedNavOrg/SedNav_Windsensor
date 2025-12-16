@@ -26,11 +26,13 @@
   #include <ESP8266WebServer.h>       // WebServer lib
   #include <ESP8266mDNS.h>            // DNS lib
   #include <ESP8266HTTPUpdateServer.h>// Web Update server
+  #include <OneWire.h>        // 1Wire network lib
 #elif defined(ESP32)
   #include <WiFi.h>
   #include <WebServer.h>
   #include <ESPmDNS.h>
   #include <HTTPUpdateServer.h>
+  #include "OneWireNg_CurrentPlatform.h"
 #else
   #error "Unsupported platform"
 #endif
@@ -38,7 +40,6 @@
 #include <Ticker.h>         // Timer lib
 #include <EEPROM.h>         // EEPROM lib
 #include <WString.h>        // Needs for structures
-#include <OneWire.h>        // 1Wire network lib
 #include <Wire.h>           // Lib for I2C
 #include <Adafruit_Sensor.h>// Adafuit sensor lib
 #include <Adafruit_BME280.h>// Lib for BME280
