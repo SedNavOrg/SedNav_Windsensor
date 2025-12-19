@@ -126,9 +126,11 @@ void setup() {
     pinMode(WIFI_ENABLE, OUTPUT);
     digitalWrite(WIFI_ENABLE, LOW); // Power on the antenna switch
     delay(100);
+    pinMode(WIFI_ANT_CONFIG, OUTPUT); // pinMode(14, OUTPUT);
     #if defined(USE_EXTERNAL_ANTENNA)
-      pinMode(WIFI_ANT_CONFIG, OUTPUT); // pinMode(14, OUTPUT);
       digitalWrite(WIFI_ANT_CONFIG, HIGH); // HIGH = internal antenna (LOW by default)
+    #else
+      digitalWrite(WIFI_ANT_CONFIG, LOW); // LOW = internal antenna (LOW by default)
     #endif
   #endif
   // NOTE: First-boot EEPROM initialization is handled automatically below.
@@ -484,6 +486,9 @@ void setup() {
   maxccounter = (actconf.timeout * 1000) / 500;
 
   // Wait until is connected otherwise abort connection after x connection trys
+  #ifdef ESP32
+    WiFi.setMinSecurity(WIFI_AUTH_WPA_PSK); // Or else it won't connect to a Raspberry Pi hotspot
+  #endif
   WiFi.begin(actconf.cssid, actconf.cpassword);
   ccounter = 0;
   while ((WiFi.status() != WL_CONNECTED) && (ccounter <= maxccounter)) {
