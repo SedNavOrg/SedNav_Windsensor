@@ -58,7 +58,16 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        [
+          "courtyards_overlap|138411119|63775250|0a688e1a-f78a-453b-a3d8-29309f9bb938|7f5e11bc-f758-4799-84cc-3f5b58769144",
+          "ça passe irl"
+        ],
+        [
+          "starved_thermal|130810000|59700000|d6c67a69-e4e0-455f-a74f-330a2cfae506|55777c1f-cde7-4f6f-857c-2862c2cca2ed|B.Cu",
+          "ça passe"
+        ]
+      ],
       "meta": {
         "version": 2
       },
@@ -509,7 +518,7 @@
       "gencad": "",
       "idf": "",
       "netlist": "",
-      "plot": "",
+      "plot": "/home/vale/Downloads/Export/",
       "pos_files": "",
       "specctra_dsn": "",
       "step": "../../../../../Downloads/OpenNav_Windsensor_smd_v1.step",
