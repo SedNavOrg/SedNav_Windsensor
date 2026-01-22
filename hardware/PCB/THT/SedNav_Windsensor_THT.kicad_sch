@@ -19323,7 +19323,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"
+		(property "Footprint" "Connector_JST:JST_ZH_B2B-ZR_1x02_P1.50mm_Vertical"
 			(at 44.45 68.58 0)
 			(effects
 				(font
