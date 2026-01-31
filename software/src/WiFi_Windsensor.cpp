@@ -207,7 +207,7 @@ void setup() {
     oneWire_Bus = 18;
     // Existing pins
     ledPin = 15;                 // LED GPIO 2 (D4)
-    INT_PIN1 = 16;              // Wind speed GPIO 14 (Reed switch) (D5), pin need 10k and 100n for spike reduction
+    INT_PIN1 = 20;              // Wind speed GPIO 14 (Reed switch) (D5), pin need 10k and 100n for spike reduction
     INT_PIN2 = -1;              // Wind direction unused
     // New pins
     I2C_SCL = 23;                // Wind direction magnetic sensor SCL GPIO 23 (AS5600) (D5)
