@@ -19323,7 +19323,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_JST:JST_ZH_B2B-ZR_1x02_P1.50mm_Vertical"
+		(property "Footprint" "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MPT-0,5-2-2.54_1x02_P2.54mm_Horizontal"
 			(at 44.45 68.58 0)
 			(effects
 				(font
@@ -20726,7 +20726,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://www.recom-power.com/pdf/Innoline/R-78Exx-0.5.pdf"
+		(property "Datasheet" "https://recom-power.com/pdf/Innoline/R-78K-0.5.pdf"
 			(at 80.01 68.58 0)
 			(effects
 				(font
@@ -20735,7 +20735,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "500mA Step-Down DC/DC-Regulator, 6-28V input, 3.3V fixed Output Voltage, LM78xx replacement, -40°C to +85°C, SIP3"
+		(property "Description" "500mA Step-Down DC/DC-Regulator, 4.5-36V input, 3.3V fixed Output Voltage, LM78xx replacement, -40°C to +90°C, SIP3"
 			(at 80.01 68.58 0)
 			(effects
 				(font
