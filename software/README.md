@@ -1,0 +1,1 @@
+Pour faire un firmware merged pour l'ESP32C6, utiliser la commande : `pio run -t mergebin -e xiao_esp32c6`
