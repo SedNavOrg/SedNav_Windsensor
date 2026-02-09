@@ -292,7 +292,9 @@ void calculationData(){
   }
   
   // Calibration of wind speed data
-  local_windspeed_mps = local_windspeed_mps * actconf.calslope + actconf.caloffset;
+  if (local_windspeed_mps > 0){
+    local_windspeed_mps = local_windspeed_mps * actconf.calslope + actconf.caloffset;
+  }
   if(local_windspeed_mps < 0){
     local_windspeed_mps = 0;
   }
