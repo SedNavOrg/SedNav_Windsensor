@@ -19,14 +19,14 @@ typedef struct {
   int crypt = 0;                            // Activate for critical webside a password query [0 = off|1 = on]
   char password[31] = "12345678";           // Password for critical websides (settings, update and reboot)
   char devname[21] = "Windsensor";          // Device name for web configuration
-  char crights[14] = "NoWa (C) 2024";       // Copy rights
-  char fversion[6] = "V1.20";               // Firmware version
-  char license[12] = "GNU GPL V3";          // License type
+  char crights[16] = "SedNav (C) 2026";       // Copy rights
+  char fversion[5] = "V3.1";               // Firmware version
+  char license[10] = "GNU GPLv3";          // License type
   int debug = 3;                            // Debug mode 0=off 1=Errors 2=Errors + Warnings 3=Errors + Warnings + Messages
-  char cssid[31] = "MyBoat";                // SSID of WiFi Client
-  char cpassword[31] = "S6587rr94P";        // Password of WiFi Client
+  char cssid[31] = "OpenPlotter";                // SSID of WiFi Client
+  char cpassword[31] = "12345678";        // Password of WiFi Client
   int timeout = 30;                         // Connection timeout for client in [s] [30|90|120|150|180|210|240|270|300]
-  char sssid[31] = "Yachta";                // SSID of WiFi Server
+  char sssid[31] = "SedNav";                // SSID of WiFi Server
   char spassword[31] = "12345678";          // Password of WiFi Server
   int apchannel = 1;                        // Assess Point channel [1...13]
   int maxconnections = 2;                   // Max number of connection for WiFi clients [1...4]
@@ -51,8 +51,13 @@ typedef struct {
   char speedUnit[5] = "kn";                 // Unit of speed [m/s|km/h|kn|bft] for WIMWV
   int downWindSensor = 1;                   // Send data to down wind 0=off 1=on (WIVPW)
   int downWindRange = 50;                   // Down wind area = 180° +/- downWindRange
+  #if (SENSOR_TYPE==WIND_SENSOR_SEDNAV_C6)
+  float calslope = 0.762369444; // defaults for small sphericals
+  float caloffset = 2.2435;
+  #else
   float calslope = 1.0;                     // Speed sensor calibration slope, default 1.0
   float caloffset = 0.0;                    // Speed sensor calibration offset, default 0.0
+  #endif
   char tempSensorType[10] = "DS18B20";      // Type of temperature sensor [Off|DS18B20|BME280]
   int tempSensor = 1;                       // Send data for temp 0=off 1=on (PWWST)
   char tempUnit[2] = "C";                   // Unit of temperature [C|F]
